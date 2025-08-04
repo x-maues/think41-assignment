@@ -197,6 +197,78 @@ app.get('/customers/:id', async (req, res) => {
   }
 });
 
+// GET /customers/:id/orders - Get all orders for a specific customer (with pagination)
+app.get('/customers/:id/orders', async (req, res) => {
+  try {
+    const customerId = parseInt(req.params.id);
+    const page = parseInt(req.query.page) || 1;
+    const limit = parseInt(req.query.limit) || 10;
+    const offset = (page - 1) * limit;
+
+    if (!customerId || customerId < 1) {
+      return res.status(400).json({ error: 'Invalid customer ID. Must be a positive integer.' });
+    }
+
+    // Check if customer exists
+    const customer = await runQuerySingle('SELECT id FROM users WHERE id = ?', [customerId]);
+    if (!customer) {
+      return res.status(404).json({ error: 'Customer not found', message: `No customer found with ID ${customerId}` });
+    }
+
+    // Get total order count for pagination
+    const countResult = await runQuerySingle('SELECT COUNT(*) as total FROM orders WHERE user_id = ?', [customerId]);
+    const total = countResult.total;
+    const totalPages = Math.ceil(total / limit);
+    const hasNext = page < totalPages;
+    const hasPrev = page > 1;
+
+    // Get orders for this customer
+    const orders = await runQuery(
+      `SELECT id, status, created_at, shipped_at, delivered_at, num_of_items FROM orders WHERE user_id = ? ORDER BY created_at DESC LIMIT ? OFFSET ?`,
+      [customerId, limit, offset]
+    );
+
+    res.json({
+      data: orders,
+      pagination: {
+        page,
+        limit,
+        total,
+        totalPages,
+        hasNext,
+        hasPrev
+      }
+    });
+  } catch (error) {
+    console.error('Error fetching customer orders:', error);
+    res.status(500).json({ error: 'Internal server error', message: 'Failed to fetch customer orders' });
+  }
+});
+
+// GET /orders/:orderId - Get specific order details
+app.get('/orders/:orderId', async (req, res) => {
+  try {
+    const orderId = parseInt(req.params.orderId);
+    if (!orderId || orderId < 1) {
+      return res.status(400).json({ error: 'Invalid order ID. Must be a positive integer.' });
+    }
+
+    // Get order details and join with customer
+    const order = await runQuerySingle(
+      `SELECT o.*, u.first_name, u.last_name, u.email, u.city, u.country FROM orders o LEFT JOIN users u ON o.user_id = u.id WHERE o.id = ?`,
+      [orderId]
+    );
+    if (!order) {
+      return res.status(404).json({ error: 'Order not found', message: `No order found with ID ${orderId}` });
+    }
+
+    res.json({ data: order });
+  } catch (error) {
+    console.error('Error fetching order details:', error);
+    res.status(500).json({ error: 'Internal server error', message: 'Failed to fetch order details' });
+  }
+});
+
 // Health check endpoint
 app.get('/health', (req, res) => {
   res.json({

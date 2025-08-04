@@ -111,6 +111,82 @@ async function testPagination() {
   }
 }
 
+async function testCustomerOrdersEndpoint() {
+  console.log('\n📦 Testing Customer Orders Endpoint...');
+  try {
+    const response = await makeRequest('/customers/1/orders?page=1&limit=3');
+    console.log(`Status: ${response.statusCode}`);
+    console.log('Response:', JSON.stringify(response.data, null, 2));
+  } catch (error) {
+    console.error('Error:', error.message);
+  }
+}
+
+async function testCustomerOrdersNotFound() {
+  console.log('\n❌ Testing Customer Orders Not Found...');
+  try {
+    const response = await makeRequest('/customers/999999/orders');
+    console.log(`Status: ${response.statusCode}`);
+    console.log('Response:', JSON.stringify(response.data, null, 2));
+  } catch (error) {
+    console.error('Error:', error.message);
+  }
+}
+
+async function testCustomerOrdersInvalidId() {
+  console.log('\n⚠️ Testing Customer Orders Invalid ID...');
+  try {
+    const response = await makeRequest('/customers/abc/orders');
+    console.log(`Status: ${response.statusCode}`);
+    console.log('Response:', JSON.stringify(response.data, null, 2));
+  } catch (error) {
+    console.error('Error:', error.message);
+  }
+}
+
+async function testOrderDetailsEndpoint() {
+  console.log('\n📄 Testing Order Details Endpoint...');
+  try {
+    // Try to get the first order for customer 1
+    const ordersResp = await makeRequest('/customers/1/orders?limit=1');
+    let orderId = 1;
+    if (ordersResp.statusCode === 200 && Array.isArray(ordersResp.data)) {
+      if (ordersResp.data.length > 0) {
+        orderId = ordersResp.data[0].id;
+      }
+    } else if (ordersResp.statusCode === 200 && ordersResp.data.data && ordersResp.data.data.length > 0) {
+      orderId = ordersResp.data.data[0].id;
+    }
+    const response = await makeRequest(`/orders/${orderId}`);
+    console.log(`Status: ${response.statusCode}`);
+    console.log('Response:', JSON.stringify(response.data, null, 2));
+  } catch (error) {
+    console.error('Error:', error.message);
+  }
+}
+
+async function testOrderDetailsNotFound() {
+  console.log('\n❌ Testing Order Details Not Found...');
+  try {
+    const response = await makeRequest('/orders/999999');
+    console.log(`Status: ${response.statusCode}`);
+    console.log('Response:', JSON.stringify(response.data, null, 2));
+  } catch (error) {
+    console.error('Error:', error.message);
+  }
+}
+
+async function testOrderDetailsInvalidId() {
+  console.log('\n⚠️ Testing Order Details Invalid ID...');
+  try {
+    const response = await makeRequest('/orders/abc');
+    console.log(`Status: ${response.statusCode}`);
+    console.log('Response:', JSON.stringify(response.data, null, 2));
+  } catch (error) {
+    console.error('Error:', error.message);
+  }
+}
+
 // Run all tests
 async function runTests() {
   console.log('🚀 Starting API Tests...');
@@ -121,6 +197,14 @@ async function runTests() {
   await testCustomerNotFound();
   await testInvalidCustomerId();
   await testPagination();
+
+  // Milestone 3 tests
+  await testCustomerOrdersEndpoint();
+  await testCustomerOrdersNotFound();
+  await testCustomerOrdersInvalidId();
+  await testOrderDetailsEndpoint();
+  await testOrderDetailsNotFound();
+  await testOrderDetailsInvalidId();
   
   console.log('\n✅ All tests completed!');
 }
